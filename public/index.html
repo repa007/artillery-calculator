@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор артиллерии</title>
+</head>
+<body>
+    <h1>Калькулятор артиллерии</h1>
+    <form id="calcForm">
+        <label>Координаты орудия (x, y):</label>
+        <input type="number" id="x1" required>
+        <input type="number" id="y1" required><br>
+
+        <label>Координаты цели (x, y):</label>
+        <input type="number" id="x2" required>
+        <input type="number" id="y2" required><br>
+
+        <label>Высота орудия:</label>
+        <input type="number" id="height1" required><br>
+
+        <label>Высота цели:</label>
+        <input type="number" id="height2" required><br>
+
+        <button type="submit">Рассчитать</button>
+    </form>
+
+    <h2>Результаты:</h2>
+    <p id="result"></p>
+
+    <script>
+        document.getElementById('calcForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const x1 = parseFloat(document.getElementById('x1').value);
+            const y1 = parseFloat(document.getElementById('y1').value);
+            const x2 = parseFloat(document.getElementById('x2').value);
+            const y2 = parseFloat(document.getElementById('y2').value);
+            const height1 = parseFloat(document.getElementById('height1').value);
+            const height2 = parseFloat(document.getElementById('height2').value);
+
+            const response = await fetch('/calculate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ x1, y1, x2, y2, height1, height2 })
+            });
+
+            const data = await response.json();
+            document.getElementById('result').innerText = `Возвышение: ${data.elevation?.toFixed(2)} рад, Время полета: ${data.timeOfFlight?.toFixed(2)} сек`;
+        });
+    </script>
+</body>
+</html>
