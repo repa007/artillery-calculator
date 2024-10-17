@@ -8,9 +8,20 @@
 <body>
     <h1>Калькулятор артиллерии</h1>
     
-    <!-- Кнопка для авторизации через Google -->
-    <a href="/auth/google">Войти с помощью Google</a>
+    <button id="showLoginButton">Войти</button>
     
+    <div id="authSection" style="display:none;">
+        <h2>Авторизация</h2>
+        <form id="loginForm">
+            <label>Логин:</label>
+            <input type="text" id="username" required><br>
+            <label>Пароль:</label>
+            <input type="password" id="password" required><br>
+            <button type="submit">Войти</button>
+        </form>
+        <p id="authMessage"></p>
+    </div>
+
     <form id="calcForm">
         <label>Координаты орудия (x, y):</label>
         <input type="number" id="x1" required>
@@ -31,9 +42,42 @@
 
     <h2>Результаты:</h2>
     <p id="result"></p>
-    <p id="bearing"></p> <!-- Новый элемент для отображения bearing -->
+    <p id="bearing"></p>
+
+    <button id="logoutButton" style="display:none;">Выйти</button>
 
     <script>
+        document.getElementById('showLoginButton').addEventListener('click', () => {
+            document.getElementById('authSection').style.display = 'block';
+        });
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                localStorage.setItem('token', data.token);
+                document.getElementById('authSection').style.display = 'none';
+                document.getElementById('calcForm').style.display = 'block';
+                document.getElementById('logoutButton').style.display = 'block';
+                document.getElementById('authMessage').innerText = 'Успешный вход!';
+            } else {
+                const errorData = await response.json();
+                document.getElementById('authMessage').innerText = `Ошибка: ${errorData.message}`;
+            }
+        });
+
         document.getElementById('calcForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -44,16 +88,33 @@
             const height1 = parseFloat(document.getElementById('height1').value);
             const height2 = parseFloat(document.getElementById('height2').value);
 
+            const token = localStorage.getItem('token');
+
             const response = await fetch('/calculate', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : undefined
                 },
                 body: JSON.stringify({ x1, y1, x2, y2, height1, height2 })
             });
 
-            const data = await response.json();
-            document.getElementById('result').innerText = `Направление: ${data.bearing?.toFixed(2)} градуса, Возвышение: ${data.elevation?.toFixed(2)} мил(НАТО), Время полета: ${data.timeOfFlight?.toFixed(2)} сек`;
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('result').innerText = `Направление: ${data.bearing?.toFixed(2)} градуса, Возвышение: ${data.elevation?.toFixed(2)} мил(НАТО), Время полета: ${data.timeOfFlight?.toFixed(2)} сек`;
+            } else {
+                const errorData = await response.json();
+                document.getElementById('result').innerText = `Ошибка: ${errorData.message}`;
+            }
+        });
+
+        document.getElementById('logoutButton').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('calcForm').style.display = 'none';
+            document.getElementById('logoutButton').style.display = 'none';
+            document.getElementById('result').innerText = '';
+            document.getElementById('bearing').innerText = '';
         });
     </script>
 </body>
