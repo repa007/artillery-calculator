@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Калькулятор артиллерии</title>
+</head>
+<body>
+    <h1>Калькулятор артиллерии</h1>
+
+    <div class="container">
+        <h2>Регистрация</h2>
+        <form id="registrationForm">
+            <div class="form-group">
+                <label for="reg_username">Имя пользователя:</label>
+                <input type="text" id="reg_username" name="reg_username" required>
+            </div>
+            <div class="form-group">
+                <label for="reg_password">Пароль:</label>
+                <input type="text" id="reg_password" name="reg_password" required>
+            </div>
+            <button type="submit">Зарегистрироваться</button>
+        </form>
+        <p id="reg_Message"></p>
+    </div>
+
+    <button id="showLoginButton">Войти</button>
+    
+    <div id="authSection" style="display:none;">
+        <h2>Авторизация</h2>
+        <form id="loginForm">
+            <label>Логин:</label>
+            <input type="text" id="username" required><br>
+            <label>Пароль:</label>
+            <input type="text" id="password" required><br>
+            <button type="submit">Войти</button>
+        </form>
+        <p id="authMessage"></p>
+    </div>
+
+    <form id="calcForm" style="display:none;">
+        <label>Координаты орудия (x, y):</label>
+        <input type="number" id="x1" required>
+        <input type="number" id="y1" required><br>
+
+        <label>Координаты цели (x, y):</label>
+        <input type="number" id="x2" required>
+        <input type="number" id="y2" required><br>
+
+        <label>Высота орудия:</label>
+        <input type="number" id="height1" required><br>
+
+        <label>Высота цели:</label>
+        <input type="number" id="height2" required><br>
+
+        <button type="submit">Рассчитать</button>
+    </form>
+
+    <h2>Результаты:</h2>
+    <p id="result"></p>
+    <p id="bearing"></p>
+
+    <h2>История вычислений:</h2>
+    <div id="calculations"></div>
+
+    <button id="logoutButton" style="display:none;">Выйти</button>
+
+    <script>
+        document.getElementById('registrationForm').addEventListener('submit', async (e) => {
+            const reg_username = document.getElementById('reg_username').value;
+            const reg_password = document.getElementById('reg_password').value;
+            
+
+            const response = await fetch('/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ reg_username, reg_password })
+                
+            });
+
+            if (response.ok) {
+                document.getElementById('reg_Message').innerText = `Аккаунт зарегистрирован`;
+            } else {
+                const errorData = await response.json();
+                document.getElementById('reg_Message').innerText = `Ошибка: ${errorData.message}`;
+            }
+        });
+
+        document.getElementById('showLoginButton').addEventListener('click', () => {
+            document.getElementById('authSection').style.display = 'block';
+        });
+        
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+    
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+    
+            const response = await fetch('/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+    
+            if (response.ok) {
+                const data = await response.json();
+                localStorage.setItem('token', data.token);
+                document.getElementById('authSection').style.display = 'none';
+                document.getElementById('calcForm').style.display = 'block';
+                document.getElementById('logoutButton').style.display = 'block';
+                document.getElementById('authMessage').innerText = 'Успешный вход!';
+                fetchCalculations(); // Загружаем историю вычислений после авторизации
+            } else {
+                const errorData = await response.json();
+                document.getElementById('authMessage').innerText = `Ошибка: ${errorData.message}`;
+            }
+        });
+    
+        document.getElementById('calcForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+    
+            const x1 = parseFloat(document.getElementById('x1').value);
+            const y1 = parseFloat(document.getElementById('y1').value);
+            const x2 = parseFloat(document.getElementById('x2').value);
+            const y2 = parseFloat(document.getElementById('y2').value);
+            const height1 = parseFloat(document.getElementById('height1').value);
+            const height2 = parseFloat(document.getElementById('height2').value);
+            const weapon = "mortar";  // Новая переменная
+    
+            const token = localStorage.getItem('token');
+    
+            const response = await fetch('/calculate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': token ? `Bearer ${token}` : undefined
+                },
+                body: JSON.stringify({ x1, y1, x2, y2, height1, height2, weapon })  // Добавляем weapon в тело запроса
+            });
+    
+            if (response.ok) {
+                const data = await response.json();
+                document.getElementById('result').innerText = `Направление: ${data.bearing?.toFixed(2)} градуса, Возвышение: ${data.elevation?.toFixed(2)} мил(НАТО), Время полета: ${data.timeOfFlight?.toFixed(2)} сек`;
+                fetchCalculations(); // Обновляем историю вычислений после расчета
+            } else {
+                const errorData = await response.json();
+                document.getElementById('result').innerText = `Ошибка: ${errorData.message}`;
+            }
+        });
+    
+        document.getElementById('logoutButton').addEventListener('click', () => {
+            localStorage.removeItem('token');
+            document.getElementById('authSection').style.display = 'block';
+            document.getElementById('calcForm').style.display = 'none';
+            document.getElementById('logoutButton').style.display = 'none';
+            document.getElementById('result').innerText = '';
+            document.getElementById('bearing').innerText = '';
+            document.getElementById('calculations').innerHTML = ''; // Очищаем историю при выходе
+        });
+
+        async function fetchCalculations() {
+            const token = localStorage.getItem('token');
+            const response = await fetch('/calculations', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const calculations = await response.json();
+            const calculationsDiv = document.getElementById('calculations');
+            calculationsDiv.innerHTML = '';
+
+            calculations.forEach(calc => {
+                const calcDiv = document.createElement('div');
+                calcDiv.innerHTML = `
+                    <p>Оружие: ${calc.weapon}, Координаты: ${calc.coordinates}, Угол: ${calc.bearing}, Высота: ${calc.elevation}, Время полета: ${calc.timeOfFlight}</p>
+                    <button onclick="deleteCalculation(${calc.id})">Удалить</button>
+                `;
+                calculationsDiv.appendChild(calcDiv);
+            });
+        }
+
+        async function deleteCalculation(id) {
+            const token = localStorage.getItem('token');
+            await fetch(`/calculations/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            fetchCalculations(); // Обновляем список после удаления
+        }
+    </script>
+</body>
+</html>
