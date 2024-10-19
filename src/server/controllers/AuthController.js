@@ -3,7 +3,7 @@ const express = require('express');
 
 // Функция для регистрации нового пользователя
 const register = (req, res) => {
-    const { username, password } = req.body;
+    const { reg_username, reg_password } = req.body;
     console.log(`Попытка регистрации пользователя: ${req.body}`);
 
     db.run(`INSERT INTO users (username, password) VALUES (?, ?)`, [username, password], function(err) {
