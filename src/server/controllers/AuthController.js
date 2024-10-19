@@ -1,12 +1,19 @@
 const db = require('../database'); // Импортируем базу данных
 const express = require('express');
+const jwt = require('jsonwebtoken');
+const SECRET_KEY = 'your_secret_key'; // Замените на ваш секретный ключ
+
+// Функция для генерации токена
+const generateToken = (username) => {
+    return jwt.sign({ username }, SECRET_KEY, { expiresIn: '1h' });
+};
 
 // Функция для регистрации нового пользователя
 const register = (req, res) => {
     const { reg_username, reg_password } = req.body;
-    console.log(`Попытка регистрации пользователя: ${req.body}`);
+    console.log(`Попытка регистрации пользователя: ${reg_username}`);
 
-    db.run(`INSERT INTO users (username, password) VALUES (?, ?)`, [username, password], function(err) {
+    db.run(`INSERT INTO users (username, password) VALUES (?, ?)`, [reg_username, reg_password], function(err) {
         if (err) {
             console.error('Ошибка при сохранении пользователя:', err);
             if (err.code === 'SQLITE_CONSTRAINT') {
@@ -27,7 +34,7 @@ const login = (req, res) => {
         return res.status(400).json({ message: 'Имя пользователя и пароль обязательны' });
     }
 
-    // сравниваем логин и пароль из БД с теми, что в запросе 
+    // Сравниваем логин и пароль из БД с теми, что в запросе 
     db.get(`SELECT * FROM users WHERE username = ?`, [username], (err, user) => {
         if (err || !user) {
             return res.status(401).json({ message: 'Неверный логин или пароль' });

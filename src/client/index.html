@@ -8,6 +8,13 @@
 <body>
     <h1>Калькулятор артиллерии</h1>
 
+    <body>
+        <h1>Вызов функции innerapi</h1>
+        <input type="button" value="Вызвать innerapi" onclick="callInnerApi()">
+        <br>
+        <output id="output_fact"></output> <!-- Поле для вывода сообщения -->
+    </body>
+
     <div class="container">
         <h2>Регистрация</h2>
         <form id="registrationForm">
@@ -63,7 +70,6 @@
     <h2>История вычислений:</h2>
     <div id="calculations"></div>
 
-    <button id="logoutButton" style="display:none;">Выйти</button>
 
     <script>
         document.getElementById('registrationForm').addEventListener('submit', async (e) => {
@@ -87,6 +93,24 @@
                 document.getElementById('reg_Message').innerText = `Ошибка: ${errorData.message}`;
             }
         });
+
+        async function callInnerApi() {
+            const output = document.getElementById('output_fact');
+
+            const response = await fetch('/fact', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Ошибка сети');
+                }
+
+                const data = await response.json();
+                output.textContent = "fdg"; // Отображаем сообщение в поле вывода
+        }
 
         document.getElementById('showLoginButton').addEventListener('click', () => {
             document.getElementById('authSection').style.display = 'block';
@@ -165,23 +189,28 @@
         async function fetchCalculations() {
             const token = localStorage.getItem('token');
             const response = await fetch('/calculations', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            const calculations = await response.json();
-            const calculationsDiv = document.getElementById('calculations');
-            calculationsDiv.innerHTML = '';
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
 
-            calculations.forEach(calc => {
-                const calcDiv = document.createElement('div');
-                calcDiv.innerHTML = `
-                    <p>Оружие: ${calc.weapon}, Координаты: ${calc.coordinates}, Угол: ${calc.bearing}, Высота: ${calc.elevation}, Время полета: ${calc.timeOfFlight}</p>
-                    <button onclick="deleteCalculation(${calc.id})">Удалить</button>
-                `;
-                calculationsDiv.appendChild(calcDiv);
-            });
+        if (!response.ok) {
+            throw new Error(`Ошибка: ${response.status} ${response.statusText}`);
+        }
+
+        const calculations = await response.json();
+        const calculationsDiv = document.getElementById('calculations');
+        calculationsDiv.innerHTML = '';
+
+        calculations.forEach(calc => {
+            const calcDiv = document.createElement('div');
+            calcDiv.innerHTML = `
+                <p>Оружие: ${calc.weapon}, Координаты: ${calc.coordinates}, Угол: ${calc.bearing}, Высота: ${calc.elevation}, Время полета: ${calc.timeOfFlight}</p>
+                <button onclick="deleteCalculation(${calc.id})">Удалить</button>
+            `;
+            calculationsDiv.appendChild(calcDiv);
+        });
         }
 
         async function deleteCalculation(id) {
